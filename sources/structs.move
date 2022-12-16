@@ -2,23 +2,22 @@
 /// the necessary metadata. This module also contains some helper functions that
 /// are used for creating a new pigment or for manipulating existing pigments.
 module nft_on_sui::pigment {
-    use sui::object::{Self, UID};
+    use sui::object::{Self, ID, UID};
     use sui::tx_context::TxContext;
     use std::option::{Self,Option};
-    use nft_on_sui::collection::{Self, Collection};
 
     /// All NFTs are represented as a Pigment object
-    struct Pigment has key {
+    struct Pigment has key, store {
         id: UID,
         name: vector<u8>,
-        collection: Collection,
+        collection: ID,
         url: vector<u8>,
         issue_count: u8,
     }
 
     /// create a new Pigment
     public fun new(
-        collection: Collection,
+        collection: ID,
         name: vector<u8>,
         url: vector<u8>,
         issue_count: u8,
@@ -35,34 +34,57 @@ module nft_on_sui::pigment {
 
     /// update existing Pigment
     public fun update(
-        pigment: &mut Pigment,
+        pi: &mut Pigment,
         name: Option<vector<u8>>,
         url: Option<vector<u8>>
     ) {
-        if (option::is_some(&name)) pigment.name = *option::borrow(&name);
-        if (option::is_some(&url)) pigment.url = *option::borrow(&url);
+        if (option::is_some(&name)) pi.name = *option::borrow(&name);
+        if (option::is_some(&url)) pi.url = *option::borrow(&url);
     }
     
     /// delete existing Pigment
     public fun delete(
-        pigment: Pigment
+        pi: Pigment
     ) {
         // Delete using unpacking
-        let Pigment {id, name: _, collection: col, url: _, issue_count: _} = pigment;
+        let Pigment {id, name: _, collection: _, url: _, issue_count: _} = pi;
         object::delete(id);
-        collection::delete(col);
     }
+
+    // !------- Getters for pigment attributes -------!
+
+    // Get name
+    public fun get_name(pi: &Pigment): vector<u8> {
+        pi.name
+    }
+
+    // Get url
+    public fun get_url(pi: &Pigment): vector<u8> {
+        pi.url
+    }
+
+    // Get collection
+    public fun get_collection(pi: &Pigment): object::ID {
+        pi.collection
+    }
+
+    // Get issue count
+    public fun get_issue_count(pi: &Pigment): u8 {
+        pi.issue_count
+    }
+
 
     #[test]
     fun new_correct_init() {
         use sui::tx_context;
         use sui::transfer;
+        use sui::object;
         
         let user = @0xAA;
         let ctx = tx_context::dummy();
 
         let new_pigment = new(
-            collection::none(&mut ctx),
+            object::id_from_address(@0xFF),
             b"",
             b"",
             1,
@@ -92,6 +114,7 @@ module nft_on_sui::collection {
         inception: u64,
         creator: vector<u8>,
         size: u8,
+        issued: u8,
     }
 
     /// Supposed to be only used once to create an empty collection object.
@@ -106,6 +129,7 @@ module nft_on_sui::collection {
             inception: 0,
             creator: b"",
             size: 1,
+            issued: 0,
         }
     }
 
@@ -122,7 +146,8 @@ module nft_on_sui::collection {
             name,
             inception,
             creator,
-            size
+            size,
+            issued: 0u8,
         }
     }
 
@@ -164,8 +189,42 @@ module nft_on_sui::collection {
     public fun delete(
         col: Collection
     ) {
-        let Collection { id, name: _, inception: _, creator: _, size: _ } = col;
+        let Collection { id, name: _, inception: _, creator: _, size: _, issued: _} = col;
         object::delete(id);
+    }
+
+    // !------- Setters for collection attributes -------!
+    
+    /// increment issued count
+    public fun increment_issued(col: &mut Collection) {
+        col.issued = col.issued + 1;
+    }
+
+    // !------- Getters for collection attributes -------!
+
+    /// Get name
+    public fun get_name(col: &Collection): vector<u8> {
+        col.name
+    }
+
+    /// Get inception
+    public fun get_inception(col: &Collection): u64 {
+        col.inception
+    }
+
+    /// Get creator
+    public fun get_creator(col: &Collection): vector<u8> {
+        col.creator
+    }
+
+    /// Get size
+    public fun get_size(col: &Collection): u8 {
+        col.size
+    }
+
+    /// Get issued
+    public fun get_tokens_issued(col: &Collection): u8 {
+        col.issued
     }
 
 }
