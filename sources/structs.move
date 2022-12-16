@@ -7,6 +7,7 @@ module nft_on_sui::pigment {
     use std::option::{Self,Option};
     use nft_on_sui::collection::{Self, Collection};
 
+    /// All NFTs are represented as a Pigment object
     struct Pigment has key {
         id: UID,
         name: vector<u8>,
@@ -52,6 +53,28 @@ module nft_on_sui::pigment {
         collection::delete(col);
     }
 
+    #[test]
+    fun new_correct_init() {
+        use sui::tx_context;
+        use sui::transfer;
+        
+        let user = @0xAA;
+        let ctx = tx_context::dummy();
+
+        let new_pigment = new(
+            collection::none(&mut ctx),
+            b"",
+            b"",
+            1,
+            &mut ctx
+        );
+
+        assert!(new_pigment.name == b"", 1);
+        assert!(new_pigment.url == b"", 1);
+        assert!(new_pigment.issue_count == 1, 1);
+
+        transfer::transfer(new_pigment, user);
+    }
 }
 
 /// Set of pigments grouped together into a collection. Each collection has
@@ -62,6 +85,7 @@ module nft_on_sui::collection {
     use sui::tx_context::TxContext;
     use std::option::{Self, Option};
 
+    /// Every NFT is part of a collection which is created with this struct
     struct Collection has key, store {
         id: UID,
         name: vector<u8>,
@@ -73,7 +97,9 @@ module nft_on_sui::collection {
     /// Supposed to be only used once to create an empty collection object.
     /// This basically denotes that the Pigment this will be used with is a
     /// stand-alone object.
-    public fun none(ctx: &mut TxContext): Collection {
+    public fun none(
+        ctx: &mut TxContext
+    ): Collection {
         Collection {
             id: object::new(ctx),
             name: b"",
@@ -84,7 +110,13 @@ module nft_on_sui::collection {
     }
 
     /// create a new Collection object
-    fun new(name: vector<u8>, inception: u64, creator: vector<u8>, size: u8, ctx: &mut TxContext): Collection {
+    public fun new(
+        name: vector<u8>,
+        inception: u64,
+        creator: vector<u8>,
+        size: u8,
+        ctx: &mut TxContext
+    ): Collection {
         Collection {
             id: object::new(ctx),
             name,
@@ -94,7 +126,31 @@ module nft_on_sui::collection {
         }
     }
 
-    /// update existing Collection
+    #[test]
+    fun new_correct_init() {
+        use sui::tx_context;
+        use sui::transfer;
+
+        let user: address = @0xAA;
+        let ctx = tx_context::dummy();
+    
+        let col = new(
+            b"",
+            0,
+            b"",
+            0,
+            &mut ctx,
+        );
+
+        assert!(col.name == b"", 1);
+        assert!(col.inception == 0, 1);
+        assert!(col.creator == b"", 1);
+        assert!(col.size == 0, 1);
+
+        transfer::transfer(col, user);
+    }
+
+    /// update existing Collection object
     public fun update(
         col: &mut Collection,
         name: Option<vector<u8>>,
@@ -111,4 +167,5 @@ module nft_on_sui::collection {
         let Collection { id, name: _, inception: _, creator: _, size: _ } = col;
         object::delete(id);
     }
+
 }
